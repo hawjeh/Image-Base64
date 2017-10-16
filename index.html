@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Base 64 converter</title>
+  </head>
+  <body>
+    <div class="file-upload">
+      <p><span id="loadingText" style="display:none">Loading...</span></p>
+      <p><input type="file" name="fileToUpload" id="fileToUpload" /></p>
+      <p><textarea rows="6" cols="100" id="base64Text"></textarea></p>
+      <p>Message: <input type="text" name="messageText" id="messageText" />
+        <input type="button" name="fileEncode" value="Encode" onclick="encodeClick()" /> ||
+        <input type="button" name="fileDecode" value="Decode" onclick="decodeClick()" />
+        Decoded Message: <input type="text" name="decodeMessageText" id="decodeMessageText" /></p>
+      <p><input type="button" name="textDownload" value="Download Text" onclick="downloadTextClick()" />
+        <input type="button" name="imageDownload" value="Download Image" onclick="downloadImageClick()" /></p>
+      <p><img id="fileDisplay" /></p>
+    </div>
+    <script type="text/javascript" src="./steganography.min.js"></script>
+    <script type="text/javascript">
+      const input = document.getElementById("fileToUpload");
+      const base64Text = document.getElementById("base64Text");
+      const img = document.getElementById("fileDisplay");
+      const reader = new FileReader;
+      reader.onload = () => {
+        if(!reader.result) return;
+        base64Text.value = reader.result;
+        input.value = null;
+        img.src = reader.result;
+        setLoadingMessage(false);
+      }
+      input.onchange = () => {
+        setLoadingMessage(true);
+        reader.abort();
+        reader.readAsDataURL(input.files[0]);
+      }
+
+      var encodeClick = () => {
+        setLoadingMessage(true);
+        var text = document.getElementById("messageText").value;
+        if(!img || !text) return;
+        var result = steg.encode(text, img);
+        img.src = result;
+        base64Text.value = result;
+        setLoadingMessage(false);
+      }
+
+      var decodeClick = () => {
+        setLoadingMessage(true);
+        if(!img) return;
+        var result = steg.decode(img);
+        document.getElementById("decodeMessageText").value = result;
+        setLoadingMessage(false);
+      }
+
+      var downloadTextClick = () => {
+        setLoadingMessage(true);
+        if(!base64Text.value) return;
+        var link = document.createElement('a');
+        link.setAttribute('download', 'imageBase64.txt');
+        link.href = makeTextFile(base64Text.value);
+        document.body.appendChild(link);
+
+        // wait for the link to be added to the document
+        window.requestAnimationFrame(function () {
+          var event = new MouseEvent('click');
+          link.dispatchEvent(event);
+          document.body.removeChild(link);
+          setLoadingMessage(false);
+        });
+      }
+
+      var downloadImageClick = () => {
+        setLoadingMessage(true);
+        if(!base64Text.value) return;
+        var extension = base64Text.value.substring("data:image/".length, base64Text.value.indexOf(";base64"));
+        var base64Only = base64Text.value.substring(base64Text.value.indexOf("base64,") + 7);
+        var link = document.createElement('a');
+        link.setAttribute('download', 'img.' + extension);
+        link.href = makeTextFile(base64Only, extension);
+        document.body.appendChild(link);
+
+        // wait for the link to be added to the document
+        window.requestAnimationFrame(function () {
+          var event = new MouseEvent('click');
+          link.dispatchEvent(event);
+          document.body.removeChild(link);
+          setLoadingMessage(false);
+        });
+      }
+
+      var makeTextFile = (text, ext) => {
+        var data = null;
+        if(ext) {
+          data = new Blob([base64_to_uint8array(text)], { type: 'image/' + ext });
+        } else {
+          data = new Blob([text], { type: 'text/plain' });
+        }
+        if (text !== null) {
+          window.URL.revokeObjectURL(text);
+        }
+        return window.URL.createObjectURL(data);
+      }
+
+      var base64_to_uint8array = (s) => {
+        var byteChars = atob(s);
+        var l = byteChars.length;
+        var byteNumbers = new Array(l);
+        for (var i = 0; i < l; i++) {
+          byteNumbers[i] = byteChars.charCodeAt(i);
+        }
+        return new Uint8Array(byteNumbers);
+      }
+
+      var setLoadingMessage = (isLoading) => {
+        document.getElementById("loadingText").style.display = (isLoading ? "block" : "none");
+      }
+    </script>
+  </body>
+</html>
